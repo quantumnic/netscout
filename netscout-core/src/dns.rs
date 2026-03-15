@@ -605,3 +605,245 @@ mod tests {
         assert_eq!(hex::encode(&[0x00, 0xFF]), "00ff");
     }
 }
+
+// --- Display impls and helper methods ---
+
+impl std::fmt::Display for DnsRecord {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}\t{}\tIN\t{}\t{}", self.name, self.ttl, self.record_type, self.value)
+    }
+}
+
+impl DnsRecord {
+    /// Check if this record matches a given record type string.
+    pub fn is_type(&self, rtype: &str) -> bool {
+        self.record_type.eq_ignore_ascii_case(rtype)
+    }
+}
+
+impl std::fmt::Display for DnsResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, ";; QUERY: {} {} @{}", self.domain, self.record_type, self.resolver)?;
+        writeln!(f, ";; STATUS: {}, RECORDS: {}, TIME: {:.1}ms", self.response_code, self.records.len(), self.query_time_ms)?;
+        if self.truncated {
+            writeln!(f, ";; WARNING: response truncated")?;
+        }
+        for record in &self.records {
+            writeln!(f, "{record}")?;
+        }
+        Ok(())
+    }
+}
+
+impl DnsResult {
+    /// Return only records matching the given type (case-insensitive).
+    pub fn records_of_type(&self, rtype: &str) -> Vec<&DnsRecord> {
+        self.records.iter().filter(|r| r.is_type(rtype)).collect()
+    }
+
+    /// Check if the query was successful (NOERROR).
+    pub fn is_success(&self) -> bool {
+        self.response_code == "NOERROR"
+    }
+
+    /// Check if the domain was not found (NXDOMAIN).
+    pub fn is_nxdomain(&self) -> bool {
+        self.response_code == "NXDOMAIN"
+    }
+
+    /// Return the minimum TTL across all records, or None if empty.
+    pub fn min_ttl(&self) -> Option<u32> {
+        self.records.iter().map(|r| r.ttl).min()
+    }
+}
+
+#[cfg(test)]
+mod display_tests {
+    use super::*;
+
+    #[test]
+    fn test_dns_record_display() {
+        let record = DnsRecord {
+            name: "example.com".to_string(),
+            record_type: "A".to_string(),
+            ttl: 300,
+            value: "93.184.216.34".to_string(),
+        };
+        let s = format!("{record}");
+        assert_eq!(s, "example.com\t300\tIN\tA\t93.184.216.34");
+    }
+
+    #[test]
+    fn test_dns_record_is_type() {
+        let record = DnsRecord {
+            name: "example.com".to_string(),
+            record_type: "A".to_string(),
+            ttl: 300,
+            value: "93.184.216.34".to_string(),
+        };
+        assert!(record.is_type("A"));
+        assert!(record.is_type("a"));
+        assert!(!record.is_type("AAAA"));
+    }
+
+    #[test]
+    fn test_dns_result_display() {
+        let result = DnsResult {
+            domain: "example.com".to_string(),
+            resolver: "8.8.8.8".to_string(),
+            record_type: "A".to_string(),
+            records: vec![DnsRecord {
+                name: "example.com".to_string(),
+                record_type: "A".to_string(),
+                ttl: 300,
+                value: "93.184.216.34".to_string(),
+            }],
+            query_time_ms: 25.5,
+            response_code: "NOERROR".to_string(),
+            truncated: false,
+            recursion_available: true,
+            authenticated_data: false,
+        };
+        let s = format!("{result}");
+        assert!(s.contains("QUERY: example.com A @8.8.8.8"));
+        assert!(s.contains("STATUS: NOERROR"));
+        assert!(s.contains("93.184.216.34"));
+        assert!(!s.contains("truncated"));
+    }
+
+    #[test]
+    fn test_dns_result_display_truncated() {
+        let result = DnsResult {
+            domain: "example.com".to_string(),
+            resolver: "8.8.8.8".to_string(),
+            record_type: "A".to_string(),
+            records: vec![],
+            query_time_ms: 10.0,
+            response_code: "NOERROR".to_string(),
+            truncated: true,
+            recursion_available: true,
+            authenticated_data: false,
+        };
+        let s = format!("{result}");
+        assert!(s.contains("truncated"));
+    }
+
+    #[test]
+    fn test_dns_result_is_success() {
+        let result = DnsResult {
+            domain: "example.com".to_string(),
+            resolver: "8.8.8.8".to_string(),
+            record_type: "A".to_string(),
+            records: vec![],
+            query_time_ms: 10.0,
+            response_code: "NOERROR".to_string(),
+            truncated: false,
+            recursion_available: true,
+            authenticated_data: false,
+        };
+        assert!(result.is_success());
+        assert!(!result.is_nxdomain());
+    }
+
+    #[test]
+    fn test_dns_result_is_nxdomain() {
+        let result = DnsResult {
+            domain: "nonexistent.example".to_string(),
+            resolver: "8.8.8.8".to_string(),
+            record_type: "A".to_string(),
+            records: vec![],
+            query_time_ms: 10.0,
+            response_code: "NXDOMAIN".to_string(),
+            truncated: false,
+            recursion_available: true,
+            authenticated_data: false,
+        };
+        assert!(!result.is_success());
+        assert!(result.is_nxdomain());
+    }
+
+    #[test]
+    fn test_dns_result_records_of_type() {
+        let result = DnsResult {
+            domain: "example.com".to_string(),
+            resolver: "8.8.8.8".to_string(),
+            record_type: "A".to_string(),
+            records: vec![
+                DnsRecord {
+                    name: "example.com".to_string(),
+                    record_type: "A".to_string(),
+                    ttl: 300,
+                    value: "93.184.216.34".to_string(),
+                },
+                DnsRecord {
+                    name: "example.com".to_string(),
+                    record_type: "AAAA".to_string(),
+                    ttl: 300,
+                    value: "2606:2800:220:1:248:1893:25c8:1946".to_string(),
+                },
+                DnsRecord {
+                    name: "example.com".to_string(),
+                    record_type: "A".to_string(),
+                    ttl: 300,
+                    value: "93.184.216.35".to_string(),
+                },
+            ],
+            query_time_ms: 25.0,
+            response_code: "NOERROR".to_string(),
+            truncated: false,
+            recursion_available: true,
+            authenticated_data: false,
+        };
+        let a_records = result.records_of_type("A");
+        assert_eq!(a_records.len(), 2);
+        let aaaa_records = result.records_of_type("AAAA");
+        assert_eq!(aaaa_records.len(), 1);
+        let mx_records = result.records_of_type("MX");
+        assert_eq!(mx_records.len(), 0);
+    }
+
+    #[test]
+    fn test_dns_result_min_ttl() {
+        let result = DnsResult {
+            domain: "example.com".to_string(),
+            resolver: "8.8.8.8".to_string(),
+            record_type: "A".to_string(),
+            records: vec![
+                DnsRecord {
+                    name: "example.com".to_string(),
+                    record_type: "A".to_string(),
+                    ttl: 300,
+                    value: "1.2.3.4".to_string(),
+                },
+                DnsRecord {
+                    name: "example.com".to_string(),
+                    record_type: "A".to_string(),
+                    ttl: 60,
+                    value: "5.6.7.8".to_string(),
+                },
+            ],
+            query_time_ms: 10.0,
+            response_code: "NOERROR".to_string(),
+            truncated: false,
+            recursion_available: true,
+            authenticated_data: false,
+        };
+        assert_eq!(result.min_ttl(), Some(60));
+    }
+
+    #[test]
+    fn test_dns_result_min_ttl_empty() {
+        let result = DnsResult {
+            domain: "example.com".to_string(),
+            resolver: "8.8.8.8".to_string(),
+            record_type: "A".to_string(),
+            records: vec![],
+            query_time_ms: 10.0,
+            response_code: "NOERROR".to_string(),
+            truncated: false,
+            recursion_available: true,
+            authenticated_data: false,
+        };
+        assert_eq!(result.min_ttl(), None);
+    }
+}
