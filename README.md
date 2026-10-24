@@ -2,7 +2,7 @@
 
 **The Swiss Army knife for network diagnostics.** One binary, every tool you need. Fast, beautiful, scriptable.
 
-[![CI](https://github.com/redbasecap-buiss/netscout/actions/workflows/ci.yml/badge.svg)](https://github.com/redbasecap-buiss/netscout/actions)
+[![CI](https://github.com/quantumnic/netscout/actions/workflows/ci.yml/badge.svg)](https://github.com/quantumnic/netscout/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ---
@@ -27,11 +27,11 @@ All commands support `--json` for machine-readable output.
 
 ### From source (cargo)
 ```bash
-cargo install --git https://github.com/redbasecap-buiss/netscout netscout-cli
+cargo install --git https://github.com/quantumnic/netscout netscout-cli
 ```
 
 ### From binary releases
-Download from [GitHub Releases](https://github.com/redbasecap-buiss/netscout/releases).
+Download from [GitHub Releases](https://github.com/quantumnic/netscout/releases).
 
 ## Quick Start
 
