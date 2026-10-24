@@ -20,6 +20,7 @@
 | ⚡ Speed Test | `netscout speed` | Bandwidth test via HTTP download |
 | 📋 WHOIS | `netscout whois` | WHOIS lookup with field parsing |
 | 📡 LAN Scan | `netscout scan` | Subnet host discovery with port checking |
+| 🧭 Interfaces | `netscout netif` | List network interfaces and addresses |
 
 All commands support `--json` for machine-readable output.
 
@@ -30,8 +31,19 @@ All commands support `--json` for machine-readable output.
 cargo install --git https://github.com/quantumnic/netscout netscout-cli
 ```
 
-### From binary releases
-Download from [GitHub Releases](https://github.com/quantumnic/netscout/releases).
+### Homebrew (macOS)
+```bash
+brew tap quantumnic/tap
+brew install netscout
+```
+
+### From a local clone
+```bash
+git clone https://github.com/quantumnic/netscout
+cd netscout
+cargo build --release
+./target/release/netscout --help
+```
 
 ## Quick Start
 
