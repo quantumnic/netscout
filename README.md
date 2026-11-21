@@ -1,5 +1,7 @@
 # 🔍 netscout
 
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/redbasecap)
+
 **The Swiss Army knife for network diagnostics.** One binary, every tool you need. Fast, beautiful, scriptable.
 
 [![CI](https://github.com/quantumnic/netscout/actions/workflows/ci.yml/badge.svg)](https://github.com/quantumnic/netscout/actions)
